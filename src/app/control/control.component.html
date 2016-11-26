@@ -1,0 +1,9 @@
+<md-card>
+  <md-card-content>
+    <md-button-toggle (change)="_togglePlay($event)" #playPause [ngSwitch]="playPause.value">
+      <md-icon *ngSwitchCase="false">play_arrow</md-icon>
+      <md-icon *ngSwitchCase="true">pause</md-icon>
+      <md-icon *ngSwitchDefault>play_arrow</md-icon>
+    </md-button-toggle>
+  </md-card-content>
+</md-card>

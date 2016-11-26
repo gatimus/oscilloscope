@@ -1,4 +1,7 @@
-import { Component, OnInit, AfterViewInit } from '@angular/core';
+import { Component, Inject, OnInit, AfterViewInit } from '@angular/core';
+import { DOCUMENT } from '@angular/platform-browser';
+import { Http, Response } from '@angular/http';
+import { Observable } from 'rxjs/Rx';
 import {
   Camera,
   OrthographicCamera,
@@ -7,8 +10,12 @@ import {
   BufferAttribute,
   WebGLRenderer,
   Points,
-  PointsMaterial
+  PointsMaterial,
+  ShaderMaterial,
+  RawShaderMaterial
 } from 'three';
+
+import { ControlService } from './control/control.service';
 
 @Component({
   selector: 'app-root',
@@ -18,10 +25,16 @@ import {
 export class AppComponent implements OnInit, AfterViewInit {
 
   // audio
+  public audioElement: HTMLAudioElement;
   public leftAnalyser: AnalyserNode;
   public leftData: Float32Array;
   public rightAnalyser: AnalyserNode;
   public rightData: Float32Array;
+
+  // shaders
+  public osciFrag: string;
+  public osciGeom: string;
+  public osciVert: string;
 
   // GL
   public camera: Camera;
@@ -29,18 +42,24 @@ export class AppComponent implements OnInit, AfterViewInit {
   public points: Points;
   public renderer: WebGLRenderer;
 
+  constructor(
+    @Inject(DOCUMENT) private _document: Document,
+    private _http: Http,
+    private _control: ControlService
+  ) {}
+
   private _initAudio() {
 
     // setup element
-    let audioElement = document.createElement('audio');
-    audioElement.crossOrigin = 'anonymous';
-    audioElement.autoplay = true;
-    //audioElement.src = 'http://fillyradio.com:8012/128k_mp3';
-    audioElement.src = 'assets/konichiwa.wav';
+    this.audioElement = this._document.createElement('audio');
+    this.audioElement.crossOrigin = 'anonymous';
+    this.audioElement.autoplay = true;
+    this.audioElement.src = 'http://fillyradio.com:8012/128k_mp3';
+    //audioElement.src = 'assets/konichiwa.wav';
 
     // setup nodes
     let audioContext = new AudioContext();
-    let audioSource = audioContext.createMediaElementSource(audioElement);
+    let audioSource = audioContext.createMediaElementSource(this.audioElement);
     let splitter = audioContext.createChannelSplitter(2);
     this.leftAnalyser = audioContext.createAnalyser();
     //leftAnalyser.fftSize = 256;
@@ -59,6 +78,32 @@ export class AppComponent implements OnInit, AfterViewInit {
 
   }
 
+  private _loadShaders(next) {
+    let getOsciFrag = this._http.get('shaders/osci.frag');
+    let getOsciGeom = this._http.get('shaders/osci.geom');
+    let getOsciVert = this._http.get('shaders/osci.vert');
+    Observable.merge(getOsciFrag, getOsciGeom, getOsciVert)
+      .subscribe(
+        (response: Response) => {
+          let path = response.url.split('/');
+          let fileName = path[path.length - 1];
+          switch (fileName) {
+            case 'osci.frag':
+              this.osciFrag = response.text();
+              break;
+            case 'osci.geom':
+              this.osciGeom = response.text();
+              break;
+            case 'osci.vert':
+              this.osciVert = response.text();
+              break;
+          }
+        },
+        err => { throw err },
+        () => next()
+      );
+  }
+
   private _initGL() {
 
     // camera
@@ -75,15 +120,33 @@ export class AppComponent implements OnInit, AfterViewInit {
     geometry.addAttribute('position', new BufferAttribute(new Float32Array(this.leftAnalyser.frequencyBinCount * 3), 3));
     let material = new PointsMaterial({
       sizeAttenuation: false,
-      color: 0x0000ff
+      color: 0x00aa00,
+      size: 5
     });
+    // let material = new RawShaderMaterial({
+    // let material = new ShaderMaterial({
+    //   fragmentShader: this.osciFrag,
+    //   vertexShader: this.osciVert
+    // });
     this.points = new Points(geometry, material);
     this.scene.add(this.points);
 
     // renderer
     this.renderer = new WebGLRenderer();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setClearAlpha(1);
 
+    this._animate();
+  }
+
+  private _initControl() {
+    this._control.controls.togglePlay.subscribe(play => {
+      if (play) {
+        this.audioElement.play();
+      } else {
+        this.audioElement.pause();
+      }
+    });
   }
 
   private _animate() {
@@ -117,6 +180,7 @@ export class AppComponent implements OnInit, AfterViewInit {
   }
 
   public ngAfterViewInit() {
+    this._initControl();
     this._animate();
   }
 

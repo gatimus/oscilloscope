@@ -16,7 +16,7 @@ export class RendererDirective implements AfterViewInit {
   }
 
   public ngAfterViewInit() {
-    this._element.appendChild(this.renderer.domElement);
+    if (!!this.renderer) this._element.appendChild(this.renderer.domElement);
   }
 
 }

@@ -2,9 +2,11 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpModule } from '@angular/http';
+import { MaterialRootModule } from '@angular/material';
 
 import { AppComponent } from './app.component';
 import { RendererDirective } from './renderer.directive';
+import { ControlModule } from './control/control.module';
 
 @NgModule({
   declarations: [
@@ -14,9 +16,10 @@ import { RendererDirective } from './renderer.directive';
   imports: [
     BrowserModule,
     FormsModule,
-    HttpModule
+    HttpModule,
+    MaterialRootModule,
+    ControlModule
   ],
-  providers: [],
   bootstrap: [AppComponent]
 })
 export class AppModule { }
